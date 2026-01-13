@@ -1,0 +1,65 @@
+/* =====================================================
+   BAGIAN 1 : MYSQL (DML + TCL + KEAMANAN DATA)
+   DATABASE : jbonline
+===================================================== */
+
+/* ---------- JOIN ---------- */
+SELECT 
+    pb.id_pembelian,
+    pj.nama_penjual,
+    pm.username_pembeli,
+    it.nama_item,
+    pb.jumlah_item
+FROM pembelian pb
+JOIN pembeli pm ON pb.id_pembeli = pm.id_pembeli
+JOIN item it ON pb.id_item = it.id_item
+JOIN penjual pj ON it.id_penjual = pj.id_penjual;
+
+/* ---------- SUBQUERY ---------- */
+SELECT nama_item, harga_item
+FROM item
+WHERE harga_item > (
+    SELECT AVG(harga_item) FROM item
+);
+
+/* ---------- AGREGASI ---------- */
+SELECT 
+    SUM(harga_item) AS total_harga,
+    AVG(harga_item) AS rata_rata_harga,
+    MAX(harga_item) AS harga_tertinggi
+FROM item;
+
+/* ---------- GROUP BY & HAVING ---------- */
+SELECT id_penjual, COUNT(id_item) AS total_item
+FROM item
+GROUP BY id_penjual
+HAVING COUNT(id_item) > 1;
+
+/* ---------- TRIGGER ---------- */
+DELIMITER //
+CREATE TRIGGER cek_jumlah_item
+BEFORE INSERT ON pembelian
+FOR EACH ROW
+BEGIN
+    IF NEW.jumlah_item <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Jumlah item harus lebih dari 0';
+    END IF;
+END;
+//
+DELIMITER ;
+
+/* ---------- STORED PROCEDURE ---------- */
+DELIMITER //
+CREATE PROCEDURE total_transaksi()
+BEGIN
+    SELECT COUNT(*) AS total_transaksi FROM pembelian;
+END;
+//
+DELIMITER ;
+
+CALL total_transaksi();
+
+/* ---------- KEAMANAN DATA ---------- */
+CREATE USER 'user_jb'@'localhost' IDENTIFIED BY '12345';
+GRANT SELECT, INSERT, UPDATE ON jbonline.* TO 'user_jb'@'localhost';
