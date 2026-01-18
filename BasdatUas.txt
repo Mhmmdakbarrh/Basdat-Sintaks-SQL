@@ -1,9 +1,5 @@
-/* =====================================================
-   BAGIAN 1 : MYSQL (DML + TCL + KEAMANAN DATA)
-   DATABASE : jbonline
-===================================================== */
+MYSQL
 
-/* ---------- JOIN ---------- */
 SELECT 
     pb.id_pembelian,
     pj.nama_penjual,
@@ -14,52 +10,126 @@ FROM pembelian pb
 JOIN pembeli pm ON pb.id_pembeli = pm.id_pembeli
 JOIN item it ON pb.id_item = it.id_item
 JOIN penjual pj ON it.id_penjual = pj.id_penjual;
-
-/* ---------- SUBQUERY ---------- */
+--------------------------------------------------------
 SELECT nama_item, harga_item
 FROM item
 WHERE harga_item > (
     SELECT AVG(harga_item) FROM item
 );
-
-/* ---------- AGREGASI ---------- */
+--------------------------------------------------------
 SELECT 
     SUM(harga_item) AS total_harga,
     AVG(harga_item) AS rata_rata_harga,
     MAX(harga_item) AS harga_tertinggi
 FROM item;
-
-/* ---------- GROUP BY & HAVING ---------- */
+--------------------------------------------------------
 SELECT id_penjual, COUNT(id_item) AS total_item
 FROM item
 GROUP BY id_penjual
 HAVING COUNT(id_item) > 1;
+--------------------------------------------------------
+DELIMITER $$
 
-/* ---------- TRIGGER ---------- */
-DELIMITER //
-CREATE TRIGGER cek_jumlah_item
-BEFORE INSERT ON pembelian
-FOR EACH ROW
+CREATE PROCEDURE tambah_pembelian (
+    IN p_id_pembeli VARCHAR(10),
+    IN p_id_item VARCHAR(10),
+    IN p_jumlah INT
+)
 BEGIN
-    IF NEW.jumlah_item <= 0 THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Jumlah item harus lebih dari 0';
-    END IF;
-END;
-//
-DELIMITER ;
 
-/* ---------- STORED PROCEDURE ---------- */
-DELIMITER //
-CREATE PROCEDURE total_transaksi()
+--------------------------------------------------------
+DELIMITER $$
+
+CREATE PROCEDURE tambah_pembelian (
+    IN p_id_pembeli VARCHAR(10),
+    IN p_id_item VARCHAR(10),
+    IN p_jumlah INT
+)
 BEGIN
-    SELECT COUNT(*) AS total_transaksi FROM pembelian;
-END;
-//
-DELIMITER ;
+    INSERT INTO pembelian (id_pembeli, id_item, jumlah_item, status_pembelian)
+    VALUES (p_id_pembeli, p_id_item, p_jumlah, 'PROSES');
+END$$
 
-CALL total_transaksi();
+--------------------------------------------------------
+START TRANSACTION;
+			
+INSERT INTO pembelian 
+VALUES ('TR010','B001','G002',1,'PROSES');
 
-/* ---------- KEAMANAN DATA ---------- */
-CREATE USER 'user_jb'@'localhost' IDENTIFIED BY '12345';
-GRANT SELECT, INSERT, UPDATE ON jbonline.* TO 'user_jb'@'localhost';
+COMMIT;
+
+[][][][][][]][][[]][][][][][][][][[][][][][][][][]][][][][][][]][[][][][][[][][][][[][][[][][][]][[]][][]][][
+MONGODB NYA
+
+db.createCollection("penjual");
+db.createCollection("pembelian");
+---------------------------------------------------------------------------------------------------------------
+db.penjual.insertOne({
+  id_penjual: "P001",
+  nama_penjual: "Akbar",
+  username_penjual: "msbayyy"
+})
+
+db.pembelian.insertOne({
+  id_pembelian: "TR001",
+  id_penjual: "P001",
+  id_item: "G001",
+  jumlah_item: 2,
+  status_pembelian: "PROSES"
+})
+---------------------------------------------------------------------------------------------------------------
+db.pembelian.find({ status_pembelian: "PROSES" });
+---------------------------------------------------------------------------------------------------------------
+
+db.penjual.updateOne(
+  { id_penjual: "P001" },
+  { $set: { username_penjual: "msbayyy_new" } }
+);
+
+--------------------------------------------------------------------------------------------------------------
+
+db.pembelian.deleteOne({ id_pembelian: "TR001" });
+
+-------------------------------------------------------------------------------------------------------------
+
+db.pembelian.aggregate([
+  {
+    $group: {
+      _id: "$id_penjual",
+      total_transaksi: { $sum: 1 }
+    }
+  }
+]);
+
+-----------------------------------------------------------------------------------------------------------
+
+db.penjual.aggregate([
+  {
+    $project: {
+      nama_penjual: 1,
+      panjang_username: { $strLenCP: "$username_penjual" }
+    }
+  }
+]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
