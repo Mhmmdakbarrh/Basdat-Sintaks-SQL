@@ -1,0 +1,209 @@
+/* =====================================================
+   DATABASE KLINIK SAKYAKIRTI
+   FILE SQL LENGKAP
+   ===================================================== */
+
+CREATE DATABASE IF NOT EXISTS klinik_sakyakirti;
+USE klinik_sakyakirti;
+
+/* =====================================================
+   1. DDL - CREATE TABLE
+   ===================================================== */
+
+CREATE TABLE pasien (
+    id_pasien INT AUTO_INCREMENT PRIMARY KEY,
+    nama_pasien VARCHAR(100) NOT NULL,
+    no_telpon VARCHAR(15) NOT NULL,
+    tanggal_lahir DATE,
+    alamat_pasien TEXT,
+    UNIQUE (no_telpon)
+);
+
+CREATE TABLE dokter (
+    id_dokter INT AUTO_INCREMENT PRIMARY KEY,
+    nama_dokter VARCHAR(100) NOT NULL,
+    no_telpon VARCHAR(15),
+    spesialis_dokter VARCHAR(100),
+    alamat_dokter TEXT,
+    status VARCHAR(20) DEFAULT 'Aktif'
+);
+
+CREATE TABLE antrian (
+    id_antrian INT AUTO_INCREMENT PRIMARY KEY,
+    id_pasien INT,
+    tanggal DATE,
+    waktu_daftar TIME,
+    status VARCHAR(20),
+    FOREIGN KEY (id_pasien) REFERENCES pasien(id_pasien)
+);
+
+CREATE TABLE pemeriksaan (
+    id_pemeriksaan INT AUTO_INCREMENT PRIMARY KEY,
+    id_pasien INT,
+    id_dokter INT,
+    tanggal_pemeriksaan DATE,
+    waktu_pemeriksaan TIME,
+    diagnosa VARCHAR(255),
+    hasil_pemeriksaan TEXT,
+    biaya INT,
+    FOREIGN KEY (id_pasien) REFERENCES pasien(id_pasien),
+    FOREIGN KEY (id_dokter) REFERENCES dokter(id_dokter)
+);
+
+/* =====================================================
+   2. DML - INSERT DATA
+   ===================================================== */
+
+INSERT INTO pasien (nama_pasien, no_telpon, tanggal_lahir, alamat_pasien) VALUES
+('Ahmad', '0811111111', '2000-01-01', 'Yogyakarta'),
+('Budi', '0822222222', '1999-05-12', 'Bantul');
+
+INSERT INTO dokter (nama_dokter, no_telpon, spesialis_dokter, alamat_dokter) VALUES
+('Dr. Andi', '0833333333', 'Umum', 'Yogyakarta'),
+('Dr. Bella', '0844444444', 'Gigi', 'Sleman');
+
+INSERT INTO antrian (id_pasien, tanggal, waktu_daftar, status) VALUES
+(1, '2026-01-15', '08:00:00', 'Menunggu'),
+(2, '2026-01-15', '08:15:00', 'Menunggu');
+
+INSERT INTO pemeriksaan (id_pasien, id_dokter, tanggal_pemeriksaan, waktu_pemeriksaan, diagnosa, hasil_pemeriksaan, biaya) VALUES
+(1, 1, '2026-01-15', '09:00:00', 'Flu', 'Diberi obat', 150000),
+(1, 2, '2026-01-16', '10:00:00', 'Gigi berlubang', 'Cabut gigi', 200000);
+
+/* =====================================================
+   3. UPDATE & DELETE
+   ===================================================== */
+
+UPDATE pasien
+SET alamat_pasien = 'Sleman'
+WHERE id_pasien = 2;
+
+DELETE p1
+FROM pasien p1
+INNER JOIN pasien p2
+WHERE p1.id_pasien > p2.id_pasien
+  AND p1.no_telpon = p2.no_telpon;
+
+/* =====================================================
+   4. JOIN
+   ===================================================== */
+
+SELECT 
+    p.nama_pasien,
+    d.nama_dokter,
+    pr.tanggal_pemeriksaan,
+    pr.diagnosa
+FROM pasien p
+JOIN pemeriksaan pr ON p.id_pasien = pr.id_pasien
+JOIN dokter d ON pr.id_dokter = d.id_dokter;
+
+/* =====================================================
+   5. SUBQUERY
+   ===================================================== */
+
+SELECT nama_dokter
+FROM dokter
+WHERE id_dokter IN (
+    SELECT DISTINCT id_dokter FROM pemeriksaan
+);
+
+/* =====================================================
+   6. AGREGAT
+   ===================================================== */
+
+SELECT 
+    d.nama_dokter,
+    SUM(pr.biaya) AS total_pendapatan
+FROM pemeriksaan pr
+JOIN dokter d ON pr.id_dokter = d.id_dokter
+GROUP BY d.id_dokter;
+
+/* =====================================================
+   7. VIEW
+   ===================================================== */
+
+CREATE VIEW view_riwayat_pasien AS
+SELECT 
+    p.nama_pasien,
+    d.nama_dokter,
+    pr.tanggal_pemeriksaan,
+    pr.diagnosa,
+    pr.biaya
+FROM pasien p
+JOIN pemeriksaan pr ON p.id_pasien = pr.id_pasien
+JOIN dokter d ON pr.id_dokter = d.id_dokter;
+
+/* =====================================================
+   8. TRIGGER
+   ===================================================== */
+
+DELIMITER $$
+
+CREATE TRIGGER before_insert_antrian
+BEFORE INSERT ON antrian
+FOR EACH ROW
+BEGIN
+    IF NEW.waktu_daftar IS NULL THEN
+        SET NEW.waktu_daftar = CURRENT_TIME();
+    END IF;
+END$$
+
+DELIMITER ;
+
+/* =====================================================
+   9. STORED PROCEDURE
+   ===================================================== */
+
+DELIMITER $$
+
+CREATE PROCEDURE laporan_pendapatan_dokter ()
+BEGIN
+    SELECT 
+        d.nama_dokter,
+        SUM(pr.biaya) AS total_pendapatan
+    FROM pemeriksaan pr
+    JOIN dokter d ON pr.id_dokter = d.id_dokter
+    GROUP BY d.id_dokter;
+END$$
+
+DELIMITER ;
+
+/* =====================================================
+   10. GROUP BY & HAVING
+   ===================================================== */
+
+SELECT 
+    d.nama_dokter,
+    COUNT(pr.id_pemeriksaan) AS jumlah_pemeriksaan
+FROM dokter d
+JOIN pemeriksaan pr ON d.id_dokter = pr.id_dokter
+GROUP BY d.id_dokter
+HAVING COUNT(pr.id_pemeriksaan) > 0;
+
+/* =====================================================
+   11. TRANSACTION CONTROL
+   ===================================================== */
+
+START TRANSACTION;
+
+INSERT INTO pasien (nama_pasien, no_telpon, tanggal_lahir, alamat_pasien)
+VALUES ('Citra', '0855555555', '2001-07-07', 'Kulon Progo');
+
+ROLLBACK;
+/* gunakan COMMIT jika data ingin disimpan */
+
+/* =====================================================
+   12. HAK AKSES
+   ===================================================== */
+
+CREATE USER 'admin_klinik'@'localhost' IDENTIFIED BY 'admin123';
+CREATE USER 'petugas_klinik'@'localhost' IDENTIFIED BY 'petugas123';
+
+GRANT ALL PRIVILEGES ON klinik_sakyakirti.* TO 'admin_klinik'@'localhost';
+
+GRANT SELECT, INSERT, UPDATE ON klinik_sakyakirti.pasien TO 'petugas_klinik'@'localhost';
+GRANT SELECT ON klinik_sakyakirti.view_riwayat_pasien TO 'petugas_klinik'@'localhost';
+
+FLUSH PRIVILEGES;
+
+/* ================== SELESAI ================== */
